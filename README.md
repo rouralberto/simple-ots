@@ -1,4 +1,4 @@
-# simple-its
+# simple-ots
 Simple "OneTimeSecret" Solution.
 
 ## Usage

@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  simple-ots:
+    build:
+      context: .
+    network_mode: bridge
+    container_name: simple-ots
+    ports:
+      - "80:80"
+    restart: on-failure
+    environment:
+      AUTH_IPS: 1.1.1.1,8.8.8.8
+    volumes:
+      - ./html:/var/www/html

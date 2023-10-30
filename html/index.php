@@ -5,6 +5,14 @@ require_once 'common.php';
 
 if (isset($_GET['uuid'])) {
     $uuid = $_GET['uuid'];
+
+    if (!is_valid_uuidv4($uuid)) {
+        echo get_template('not-found');
+        echo get_template('footer');
+        exit;
+    }
+
+
     $stmt = $pdo->prepare('SELECT value, createdAt, expiry FROM secrets WHERE uuid = ?');
     $stmt->execute([$uuid]);
     $secret      = $stmt->fetch();
@@ -30,12 +38,9 @@ if (isset($_GET['uuid'])) {
         </div>
 
         <?php
-    } else { ?>
-        <h1>Error</h1>
-        <div class="alert alert-danger" role="alert">
-            The requested secret doesn't exist, or it expired already. <a href="/">Go back</a>.
-        </div>
-    <?php }
+    } else {
+        echo get_template('not-found');
+    }
     echo get_template('footer');
     exit;
 }

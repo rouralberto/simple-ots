@@ -27,6 +27,15 @@ function uuidv4(): string
 }
 
 /**
+ * @param string $uuid
+ * @return bool
+ */
+function is_valid_uuidv4(string $uuid): bool
+{
+    return preg_match('/^[a-f\d]{8}(-[a-f\d]{4}){4}[a-f\d]{8}$/i', $uuid) === 1;
+}
+
+/**
  * @param string $name
  * @return string
  */

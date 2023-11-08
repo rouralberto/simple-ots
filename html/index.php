@@ -3,6 +3,19 @@
 global $pdo;
 require_once 'common.php';
 
+if (isset($_GET['read'])) {
+    $uuid       = $_GET['read'];
+    $secret_url = get_url("?uuid=$uuid"); ?>
+    <div class="row">
+        <div class="col-md-8 offset-md-2 text-center">
+            <h1><?php echo $uuid; ?></h1>
+            <p>Click to see the secret: <a href="<?php echo $secret_url; ?>"><?php echo $secret_url; ?></a>.</p>
+        </div>
+    </div>
+    <?php
+    exit;
+}
+
 if (isset($_GET['uuid'])) {
     $uuid = $_GET['uuid'];
 
@@ -11,7 +24,6 @@ if (isset($_GET['uuid'])) {
         echo get_template('footer');
         exit;
     }
-
 
     $stmt = $pdo->prepare('SELECT value, createdAt, expiry FROM secrets WHERE uuid = ?');
     $stmt->execute([$uuid]);

@@ -30,7 +30,7 @@ if (!$secret || !$expiry) { ?>
 $stmt = $pdo->prepare('INSERT INTO secrets (uuid, expiry, value) VALUES (?, ?, ?)');
 $stmt->execute([$uuid, $expiry, $secret]);
 
-$secret_url = get_url("?uuid=$uuid"); ?>
+$secret_url = get_url("?read=$uuid"); ?>
     <h1>Secret created!</h1>
     <div class="alert alert-success" role="alert">
         The secret will be available, only once, at <a href="<?php echo $secret_url; ?>"><?php echo $secret_url; ?></a>.

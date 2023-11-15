@@ -10,7 +10,7 @@ if (isset($_GET['read'])) {
         <div class="col-md-8 offset-md-2 text-center">
             <h1><?php echo $uuid; ?></h1>
             <p>Click to see the secret: <a href="<?php echo $secret_url; ?>"><?php echo $secret_url; ?></a>.</p>
-            <p class="small text-muted">(Remember: If you click on the link, the secret will disappear forever)</p>
+            <p class="small text-muted">(Remember: If you open the secret, it will instantly disappear)</p>
         </div>
     </div>
     <?php

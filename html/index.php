@@ -49,7 +49,10 @@ if (isset($_GET['uuid'])) {
                 <textarea class="form-control mt-4" rows="3"><?php echo $secret['value']; ?></textarea>
             </div>
         </div>
-
+        <script type="application/javascript">
+          const jsConfetti = new JSConfetti();
+          jsConfetti.addConfetti({emojis: ['💥', '🦵', '💣', '🤯']});
+        </script>
         <?php
     } else {
         echo get_template('not-found');

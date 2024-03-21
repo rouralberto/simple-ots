@@ -22,7 +22,7 @@ $uuid   = uuidv4();
 
 if (!$secret || !$expiry) { ?>
     <h1>Error</h1>
-    <div class="alert alert-danger" role="alert">Data passed has bad format.</div>
+    <div class="alert alert-danger" role="alert">Data passed has bad format. <a href="/">Go back</a>.</div>
     <?php echo get_template('footer');
     exit;
 }

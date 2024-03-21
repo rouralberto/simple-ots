@@ -11,7 +11,7 @@ if (!is_allowed()) {
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { ?>
     <h1>Error</h1>
-    <div class="alert alert-danger" role="alert">The method used is not allowed.</div>
+    <div class="alert alert-danger" role="alert">The method used is not allowed. <a href="/">Go back</a>.</div>
     <?php echo get_template('footer');
     exit;
 }

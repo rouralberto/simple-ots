@@ -12,7 +12,6 @@ $pdo->exec('
 ');
 
 /**
- * @return string
  * @throws Exception
  */
 function uuidv4(): string
@@ -26,27 +25,16 @@ function uuidv4(): string
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
-/**
- * @param string $uuid
- * @return bool
- */
 function is_valid_uuidv4(string $uuid): bool
 {
     return preg_match('/^[a-f\d]{8}(-[a-f\d]{4}){4}[a-f\d]{8}$/i', $uuid) === 1;
 }
 
-/**
- * @param string $name
- * @return string
- */
 function get_template(string $name): string
 {
     return file_get_contents("/var/www/html/templates/$name.html");
 }
 
-/**
- * @return string
- */
 function get_host(): string
 {
     $host = $_SERVER['HTTP_HOST'];
@@ -59,9 +47,6 @@ function get_host(): string
     return $host;
 }
 
-/**
- * @return string
- */
 function get_schema(): string
 {
     $isSecure = false;
@@ -74,10 +59,6 @@ function get_schema(): string
     return $isSecure ? 'https' : 'http';
 }
 
-/**
- * @param string $uri
- * @return string
- */
 function get_url(string $uri): string
 {
     $host   = get_host();
@@ -86,9 +67,6 @@ function get_url(string $uri): string
     return "$schema://$host/$uri";
 }
 
-/**
- * @return string
- */
 function get_remote_ip(): string
 {
     $remote_ip = $_SERVER['REMOTE_ADDR'];
@@ -99,9 +77,6 @@ function get_remote_ip(): string
     return $remote_ip;
 }
 
-/**
- * @return bool
- */
 function is_allowed(): bool
 {
     $is_allowed = true;

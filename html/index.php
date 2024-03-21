@@ -46,7 +46,8 @@ if (isset($_GET['uuid'])) {
             <div class="col-md-8 offset-md-2">
                 <h1 class="text-center"><?php echo $uuid; ?></h1>
                 <h2 class="h5 small text-muted text-center">(This will only be shown once)</h2>
-                <textarea class="form-control mt-4" rows="3"><?php echo $secret['value']; ?></textarea>
+                <label style="display: none" for="theSecret">Secret Contents:</label>
+                <textarea id="theSecret" class="form-control mt-4" rows="3"><?php echo $secret['value']; ?></textarea>
             </div>
         </div>
         <script type="application/javascript">

@@ -35,11 +35,6 @@ function get_template(string $name): string
     return file_get_contents("/var/www/html/templates/$name.html");
 }
 
-/**
- * @param string $uuid
- * @param bool $delete
- * @return false|mixed
- */
 function get_secret(string $uuid, bool $delete = false): mixed
 {
     global $pdo;

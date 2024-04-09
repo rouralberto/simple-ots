@@ -30,9 +30,25 @@ if (!$secret || !$expiry) { ?>
 $stmt = $pdo->prepare('INSERT INTO secrets (uuid, expiry, value) VALUES (?, ?, ?)');
 $stmt->execute([$uuid, $expiry, $secret]);
 
-$secret_url = get_url("?read=$uuid"); ?>
+$sharing_url = get_url("?read=$uuid"); ?>
     <h1>Secret created!</h1>
     <div class="alert alert-success" role="alert">
-        The secret will be available, only once, at <a href="<?php echo $secret_url; ?>"><?php echo $secret_url; ?></a>.
+        The secret will be available, once, at <a href="<?php echo $sharing_url; ?>"><?php echo $sharing_url; ?></a>.
+    </div>
+    <div class="text-center">
+        <button id="copy-button" class="btn btn-sm btn-success" onclick="copyUrl()">
+            <span id="copy-link"><i class="bi bi-copy me-2"></i>Copy Secret Link</span>
+            <span id="link-copied" class="d-none"><i class="bi bi-check me-2"></i>Secret Link Copied</span>
+        </button>
+        <script>
+          function copyUrl () {
+            navigator.clipboard.writeText('<?php echo $sharing_url; ?>')
+              .then(() => {
+                document.getElementById('copy-link').classList.add('d-none');
+                document.getElementById('link-copied').classList.remove('d-none');
+                document.getElementById('copy-button').disabled = true;
+              });
+          }
+        </script>
     </div>
 <?php echo get_template('footer');

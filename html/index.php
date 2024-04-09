@@ -7,6 +7,7 @@ if (isset($_GET['read'])) {
     $uuid       = $_GET['read'];
     $secret     = get_secret($uuid, false);
     $secret_url = get_url("?uuid=$uuid");
+    $sharing_url = get_url("?read=$uuid");
 
     if ($secret) { ?>
         <div class="row">
@@ -18,6 +19,16 @@ if (isset($_GET['read'])) {
                     <span id="copy-link"><i class="bi bi-copy me-2"></i>Copy Secret Link</span>
                     <span id="link-copied" class="d-none"><i class="bi bi-check me-2"></i>Secret Link Copied</span>
                 </button>
+                <script>
+                  function copyUrl () {
+                    navigator.clipboard.writeText('<?php echo $sharing_url; ?>')
+                      .then(() => {
+                        document.getElementById('copy-link').classList.add('d-none');
+                        document.getElementById('link-copied').classList.remove('d-none');
+                        document.getElementById('copy-button').disabled = true;
+                      });
+                  }
+                </script>
 
                 <hr>
 
@@ -27,16 +38,6 @@ if (isset($_GET['read'])) {
                     Remaining time: <?php echo get_remaining_time($secret['createdAt'], $secret['expiry']); ?>
                 </p>
 
-                <script>
-                  function copyUrl () {
-                    navigator.clipboard.writeText('<?php echo $secret_url; ?>')
-                      .then(() => {
-                        document.getElementById('copy-link').classList.add('d-none');
-                        document.getElementById('link-copied').classList.remove('d-none');
-                        document.getElementById('copy-button').disabled = true;
-                      });
-                  }
-                </script>
             </div>
         </div>
         <?php

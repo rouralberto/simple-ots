@@ -35,7 +35,7 @@ if (isset($_GET['read'])) {
                 <p class="small text-muted mb-1">(Remember: If you open the secret, it will instantly disappear)</p>
 
                 <p class="small text-muted">
-                    Remaining time: <?php echo get_remaining_time($secret['createdAt'], $secret['expiry']); ?>
+                    Remaining time: <code><?php echo get_remaining_time($secret['createdAt'], $secret['expiry']); ?></code>
                 </p>
 
             </div>

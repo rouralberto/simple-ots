@@ -103,7 +103,10 @@ function get_remaining_time($date, $expiry)
     $current_time = time();
     $timediff     = $expiry_time - $current_time;
 
-    return $timediff > 0 ? gmdate("H:i:s", $timediff) : false;
+    $hours   = sprintf("%02d", floor($timediff / 3600));
+    $minutes = sprintf("%02d", floor(($timediff % 3600) / 60));
+
+    return $timediff > 0 ? "{$hours}h {$minutes}min" : false;
 }
 
 function get_remote_ip(): string

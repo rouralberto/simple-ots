@@ -47,13 +47,14 @@ function get_secret(string $uuid, bool $delete = false): mixed
         $createdAt = strtotime($secret['createdAt']);
         $expiry    = $secret['expiry'];
         $remaining = $createdAt + $expiry - date('U');
+        $valid     = $remaining > 0;
 
-        if ($delete) {
+        if ($delete || !$valid) {
             $stmt = $pdo->prepare('DELETE FROM secrets WHERE uuid = ?');
             $stmt->execute([$uuid]);
         }
 
-        return $remaining >= 0 ? $secret : false;
+        return $valid ? $secret : false;
     }
 
     return false;

@@ -10,7 +10,26 @@ if (isset($_GET['read'])) {
         <div class="col-md-8 offset-md-2 text-center">
             <h1><?php echo $uuid; ?></h1>
             <p>Click to see the secret: <a href="<?php echo $secret_url; ?>"><?php echo $secret_url; ?></a>.</p>
+
+            <button id="copy-button" class="btn btn-sm btn-success" onclick="copyUrl()">
+                <span id="copy-link"><i class="bi bi-copy me-2"></i>Copy Secret Link</span>
+                <span id="link-copied" class="d-none"><i class="bi bi-check me-2"></i>Secret Link Copied</span>
+            </button>
+
+            <hr>
+
             <p class="small text-muted">(Remember: If you open the secret, it will instantly disappear)</p>
+
+            <script>
+              function copyUrl () {
+                navigator.clipboard.writeText('<?php echo $secret_url; ?>')
+                  .then(() => {
+                    document.getElementById('copy-link').classList.add('d-none');
+                    document.getElementById('link-copied').classList.remove('d-none');
+                    document.getElementById('copy-button').disabled = true;
+                  });
+              }
+            </script>
         </div>
     </div>
     <?php

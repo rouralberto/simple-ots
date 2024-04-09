@@ -35,6 +35,35 @@ function get_template(string $name): string
     return file_get_contents("/var/www/html/templates/$name.html");
 }
 
+/**
+ * @param string $uuid
+ * @param bool $delete
+ * @return false|mixed
+ */
+function get_secret(string $uuid, bool $delete = false): mixed
+{
+    global $pdo;
+
+    $stmt = $pdo->prepare('SELECT value, createdAt, expiry FROM secrets WHERE uuid = ?');
+    $stmt->execute([$uuid]);
+    $secret = $stmt->fetch();
+
+    if ($secret) {
+        $createdAt = strtotime($secret['createdAt']);
+        $expiry    = $secret['expiry'];
+        $remaining = $createdAt + $expiry - date('U');
+
+        if ($delete) {
+            $stmt = $pdo->prepare('DELETE FROM secrets WHERE uuid = ?');
+            $stmt->execute([$uuid]);
+        }
+
+        return $remaining >= 0 ? $secret : false;
+    }
+
+    return false;
+}
+
 function get_host(): string
 {
     $host = $_SERVER['HTTP_HOST'];
@@ -65,6 +94,16 @@ function get_url(string $uri): string
     $schema = get_schema();
 
     return "$schema://$host/$uri";
+}
+
+function get_remaining_time($date, $expiry)
+{
+    $start_date   = strtotime($date);
+    $expiry_time  = $start_date + $expiry;
+    $current_time = time();
+    $timediff     = $expiry_time - $current_time;
+
+    return $timediff > 0 ? gmdate("H:i:s", $timediff) : false;
 }
 
 function get_remote_ip(): string

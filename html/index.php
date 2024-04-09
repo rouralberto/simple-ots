@@ -5,34 +5,45 @@ require_once 'common.php';
 
 if (isset($_GET['read'])) {
     $uuid       = $_GET['read'];
-    $secret_url = get_url("?uuid=$uuid"); ?>
-    <div class="row">
-        <div class="col-md-8 offset-md-2 text-center">
-            <h1><?php echo $uuid; ?></h1>
-            <p>Click to see the secret: <a href="<?php echo $secret_url; ?>"><?php echo $secret_url; ?></a>.</p>
+    $secret     = get_secret($uuid, false);
+    $secret_url = get_url("?uuid=$uuid");
 
-            <button id="copy-button" class="btn btn-sm btn-success" onclick="copyUrl()">
-                <span id="copy-link"><i class="bi bi-copy me-2"></i>Copy Secret Link</span>
-                <span id="link-copied" class="d-none"><i class="bi bi-check me-2"></i>Secret Link Copied</span>
-            </button>
+    if ($secret) { ?>
+        <div class="row">
+            <div class="col-md-8 offset-md-2 text-center">
+                <h1><?php echo $uuid; ?></h1>
+                <p>Click to see the secret: <a href="<?php echo $secret_url; ?>"><?php echo $secret_url; ?></a>.</p>
 
-            <hr>
+                <button id="copy-button" class="btn btn-sm btn-success" onclick="copyUrl()">
+                    <span id="copy-link"><i class="bi bi-copy me-2"></i>Copy Secret Link</span>
+                    <span id="link-copied" class="d-none"><i class="bi bi-check me-2"></i>Secret Link Copied</span>
+                </button>
 
-            <p class="small text-muted">(Remember: If you open the secret, it will instantly disappear)</p>
+                <hr>
 
-            <script>
-              function copyUrl () {
-                navigator.clipboard.writeText('<?php echo $secret_url; ?>')
-                  .then(() => {
-                    document.getElementById('copy-link').classList.add('d-none');
-                    document.getElementById('link-copied').classList.remove('d-none');
-                    document.getElementById('copy-button').disabled = true;
-                  });
-              }
-            </script>
+                <p class="small text-muted mb-1">(Remember: If you open the secret, it will instantly disappear)</p>
+
+                <p class="small text-muted">
+                    Remaining time: <?php echo get_remaining_time($secret['createdAt'], $secret['expiry']); ?>
+                </p>
+
+                <script>
+                  function copyUrl () {
+                    navigator.clipboard.writeText('<?php echo $secret_url; ?>')
+                      .then(() => {
+                        document.getElementById('copy-link').classList.add('d-none');
+                        document.getElementById('link-copied').classList.remove('d-none');
+                        document.getElementById('copy-button').disabled = true;
+                      });
+                  }
+                </script>
+            </div>
         </div>
-    </div>
-    <?php
+        <?php
+    } else {
+        echo get_template('not-found');
+    }
+    echo get_template('footer');
     exit;
 }
 
@@ -45,22 +56,9 @@ if (isset($_GET['uuid'])) {
         exit;
     }
 
-    $stmt = $pdo->prepare('SELECT value, createdAt, expiry FROM secrets WHERE uuid = ?');
-    $stmt->execute([$uuid]);
-    $secret      = $stmt->fetch();
-    $validSecret = false;
+    $secret = get_secret($uuid, true);
 
-    if ($secret) {
-        $createdAt   = strtotime($secret['createdAt']);
-        $expiry      = $secret['expiry'];
-        $remaining   = $createdAt + $expiry - date('U');
-        $validSecret = $remaining >= 0;
-
-        $stmt = $pdo->prepare('DELETE FROM secrets WHERE uuid = ?');
-        $stmt->execute([$uuid]);
-    }
-
-    if ($validSecret) { ?>
+    if ($secret) { ?>
         <div class="row">
             <div class="col-md-8 offset-md-2">
                 <h1 class="text-center"><?php echo $uuid; ?></h1>

@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   simple-ots:
     #image: roura/simple-ots

@@ -1,6 +1,6 @@
 <?php
 
-$pdo = new PDO('sqlite:/var/www/db.sqlite');
+$pdo = new PDO('sqlite:/var/www/db/db.sqlite');
 $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $pdo->exec('
     CREATE TABLE IF NOT EXISTS secrets (

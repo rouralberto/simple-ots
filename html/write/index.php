@@ -36,6 +36,7 @@ $sharing_url = get_url("?read=$uuid"); ?>
         The secret will be available, once, at <a href="<?php echo $sharing_url; ?>"><?php echo $sharing_url; ?></a>.
     </div>
     <div class="text-center">
+        <a href="/" class="btn btn-sm btn-warning me-2"><i class="bi bi-plus-circle me-2"></i>Create New Secret</a>
         <button id="copy-button" class="btn btn-sm btn-success" onclick="copyUrl()">
             <span id="copy-link"><i class="bi bi-copy me-2"></i>Copy Secret Link</span>
             <span id="link-copied" class="d-none"><i class="bi bi-check me-2"></i>Secret Link Copied</span>

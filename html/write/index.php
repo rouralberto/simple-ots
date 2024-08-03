@@ -43,7 +43,7 @@ $sharing_url = get_url("?read=$uuid"); ?>
         </button>
         <script>
           function copyUrl () {
-            navigator.clipboard.writeText('<?php echo $sharing_url; ?>')
+            navigator.clipboard.writeText(<?php echo json_encode($sharing_url); ?>)
               .then(() => {
                 document.getElementById('copy-link').classList.add('d-none');
                 document.getElementById('link-copied').classList.remove('d-none');

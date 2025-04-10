@@ -65,12 +65,35 @@ if (isset($_GET['uuid'])) {
                 <h1 class="text-center"><?php echo $uuid; ?></h1>
                 <h2 class="h5 small text-muted text-center">(This will only be shown once)</h2>
                 <label style="display: none" for="theSecret">Secret Contents:</label>
-                <textarea id="theSecret" class="form-control mt-4" rows="3"><?php echo $secret['value']; ?></textarea>
+                <div class="position-relative">
+                    <textarea id="theSecret" class="form-control mt-4" rows="3" style="padding-right: 45px;"><?php echo $secret['value']; ?></textarea>
+                    <button id="copy-secret-button" class="btn btn-sm btn-success position-absolute top-0 end-0 mt-4 me-2" onclick="copySecret()">
+                        <span id="copy-secret"><i class="bi bi-copy"></i></span>
+                        <span id="secret-copied" class="d-none"><i class="bi bi-check"></i></span>
+                    </button>
+                </div>
             </div>
         </div>
         <script type="application/javascript">
           const jsConfetti = new JSConfetti();
           jsConfetti.addConfetti({emojis: ['💥', '🦵', '💣', '🤯']});
+          
+          function copySecret() {
+            const secretText = document.getElementById('theSecret').value;
+            navigator.clipboard.writeText(secretText)
+              .then(() => {
+                document.getElementById('copy-secret').classList.add('d-none');
+                document.getElementById('secret-copied').classList.remove('d-none');
+                document.getElementById('copy-secret-button').disabled = true;
+                
+                // Show a temporary tooltip or notification
+                const button = document.getElementById('copy-secret-button');
+                button.setAttribute('title', 'Copied!');
+                setTimeout(() => {
+                  button.removeAttribute('title');
+                }, 2000);
+              });
+          }
         </script>
         <?php
     } else {

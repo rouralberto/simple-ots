@@ -76,8 +76,8 @@ if (isset($_GET['uuid'])) {
         </div>
         <script type="application/javascript">
           const jsConfetti = new JSConfetti();
-          jsConfetti.addConfetti({emojis: ['💥', '🦵', '💣', '🤯']});
-          
+          jsConfetti.addConfetti({emojis: ['💥', '🦵', '💣', '🤯', '🔥']});
+
           function copySecret() {
             const secretText = document.getElementById('theSecret').value;
             navigator.clipboard.writeText(secretText)
@@ -85,7 +85,7 @@ if (isset($_GET['uuid'])) {
                 document.getElementById('copy-secret').classList.add('d-none');
                 document.getElementById('secret-copied').classList.remove('d-none');
                 document.getElementById('copy-secret-button').disabled = true;
-                
+
                 // Show a temporary tooltip or notification
                 const button = document.getElementById('copy-secret-button');
                 button.setAttribute('title', 'Copied!');

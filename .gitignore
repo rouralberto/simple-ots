@@ -1,1 +1,2 @@
 *.sqlite
+build-and-push.sh

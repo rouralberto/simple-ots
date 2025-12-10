@@ -138,25 +138,34 @@ function get_secret(string $uuid, bool $delete = false): mixed
 {
     global $pdo;
 
-    $stmt = $pdo->prepare('SELECT value, createdAt, expiry FROM secrets WHERE uuid = ?');
-    $stmt->execute([$uuid]);
-    $secret = $stmt->fetch();
+    try {
+        $pdo->exec('BEGIN IMMEDIATE');
 
-    if ($secret) {
-        $createdAt = strtotime($secret['createdAt']);
-        $expiry    = $secret['expiry'];
-        $remaining = $createdAt + $expiry - date('U');
-        $valid     = $remaining > 0;
+        $stmt = $pdo->prepare('SELECT value, createdAt, expiry FROM secrets WHERE uuid = ?');
+        $stmt->execute([$uuid]);
+        $secret = $stmt->fetch();
 
-        if ($delete || !$valid) {
-            $stmt = $pdo->prepare('DELETE FROM secrets WHERE uuid = ?');
-            $stmt->execute([$uuid]);
+        if ($secret) {
+            $createdAt = strtotime($secret['createdAt']);
+            $expiry    = $secret['expiry'];
+            $remaining = $createdAt + $expiry - date('U');
+            $valid     = $remaining > 0;
+
+            if ($delete || !$valid) {
+                $stmt = $pdo->prepare('DELETE FROM secrets WHERE uuid = ?');
+                $stmt->execute([$uuid]);
+            }
+
+            $pdo->exec('COMMIT');
+            return $valid ? $secret : false;
         }
 
-        return $valid ? $secret : false;
+        $pdo->exec('COMMIT');
+        return false;
+    } catch (PDOException $e) {
+        $pdo->exec('ROLLBACK');
+        throw $e;
     }
-
-    return false;
 }
 
 function get_host(): string

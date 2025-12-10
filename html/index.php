@@ -8,6 +8,7 @@ if (!check_rate_limit()) {
 }
 
 if (isset($_GET['read'])) {
+    echo get_template('header');
     $uuid = $_GET['read'];
 
     if (!is_valid_uuidv4($uuid)) {
@@ -71,6 +72,7 @@ if (isset($_GET['read'])) {
 }
 
 if (isset($_GET['uuid'])) {
+    echo get_template('header');
     $uuid = $_GET['uuid'];
 
     if (!is_valid_uuidv4($uuid)) {
@@ -138,11 +140,13 @@ if (isset($_GET['uuid'])) {
 }
 
 if (!is_allowed()) {
+    echo get_template('header');
     echo get_template('not-authorised');
     echo get_template('footer');
     exit;
 }
 
+echo get_template('header');
 $csrf_token = generate_csrf_token();
 $new_secret_template = get_template('new-secret');
 $new_secret_template = str_replace('{{CSRF_TOKEN}}', htmlspecialchars($csrf_token), $new_secret_template);

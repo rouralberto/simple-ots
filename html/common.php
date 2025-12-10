@@ -238,5 +238,3 @@ function show_rate_limit_error(): void
     echo get_template('footer');
     exit;
 }
-
-echo get_template('header');

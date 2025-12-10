@@ -55,7 +55,8 @@ if (!in_array((int)$expiry, $valid_expiries)) { ?>
 $stmt = $pdo->prepare('INSERT INTO secrets (uuid, expiry, value) VALUES (?, ?, ?)');
 $stmt->execute([$uuid, $expiry, $secret]);
 
-$sharing_url = get_url("?read=$uuid"); ?>
+$sharing_url = get_url("?read=$uuid");
+echo get_template('header'); ?>
     <h1>Secret created!</h1>
     <div class="alert alert-success" role="alert">
         The secret will be available, once, at <a id="sharing-url" href=""></a>

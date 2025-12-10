@@ -58,7 +58,7 @@ $stmt->execute([$uuid, $expiry, $secret]);
 $sharing_url = get_url("?read=$uuid"); ?>
     <h1>Secret created!</h1>
     <div class="alert alert-success" role="alert">
-        The secret will be available, once, at <a href="<?php echo htmlspecialchars($sharing_url); ?>"><?php echo htmlspecialchars($sharing_url); ?></a>
+        The secret will be available, once, at <a id="sharing-url" href=""></a>
     </div>
     <div class="text-center">
         <a href="/" class="btn btn-sm btn-warning me-2"><i class="bi bi-plus-circle me-2"></i>Create New Secret</a>
@@ -73,14 +73,15 @@ $sharing_url = get_url("?read=$uuid"); ?>
                 const finalUrl = baseUrl + '#' + pendingKey;
                 sessionStorage.removeItem('ots_pending_key');
 
-                document.getElementById('sharing-url').textContent = finalUrl;
+                const link = document.getElementById('sharing-url');
+                link.href = finalUrl;
+                link.textContent = finalUrl;
 
                 window.copyUrl = function() {
-                navigator.clipboard.writeText(finalUrl)
-                    .then(() => {
-                    document.getElementById('copy-link').classList.add('d-none');
-                    document.getElementById('link-copied').classList.remove('d-none');
-                    document.getElementById('copy-button').disabled = true;
+                    navigator.clipboard.writeText(finalUrl).then(() => {
+                        document.getElementById('copy-link').classList.add('d-none');
+                        document.getElementById('link-copied').classList.remove('d-none');
+                        document.getElementById('copy-button').disabled = true;
                     });
                 };
             })();

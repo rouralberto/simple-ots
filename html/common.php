@@ -53,8 +53,8 @@ function cleanup_expired_secrets(): void
     $stmt->execute();
 }
 
-const RATE_LIMIT_WINDOW = 60;  // 1 minute
-const RATE_LIMIT_MAX_ATTEMPTS = 4;
+const RATE_LIMIT_WINDOW = 300; // 5 minutes
+const RATE_LIMIT_MAX_ATTEMPTS = 30;
 
 function check_rate_limit(): bool
 {

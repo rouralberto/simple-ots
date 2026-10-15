@@ -9,6 +9,13 @@ services:
       - "80:80"
     restart: on-failure
     environment:
-      AUTH_IPS: 1.1.1.1,8.8.8.8
+      # Comma-separated IPs/CIDRs allowed to create secrets (e.g. 1.1.1.1,10.0.0.0/8). Empty = anyone.
+      AUTH_IPS: ""
+      # Behind a reverse proxy, its IP/CIDR (e.g. 172.17.0.0/16) so X-Forwarded-For is trusted.
+      TRUSTED_PROXIES: ""
     volumes:
       - ./html:/var/www/html
+      - db:/var/www/db
+
+volumes:
+  db:

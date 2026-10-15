@@ -167,11 +167,20 @@ const OTSCrypto = {
     },
 
     /**
-     * Check if Web Crypto API is available
+     * Check that a string looks like an exported 256-bit key (43 base64url chars)
+     * @param {string|null} keyString
+     * @returns {boolean}
+     */
+    isValidKeyString(keyString) {
+        return typeof keyString === 'string' && /^[A-Za-z0-9_-]{43}$/.test(keyString);
+    },
+
+    /**
+     * Check if Web Crypto API is available (only on secure origins: HTTPS or localhost)
      * @returns {boolean}
      */
     isSupported() {
-        return !!(crypto && crypto.subtle && crypto.subtle.generateKey);
+        return !!(window.isSecureContext && window.crypto && window.crypto.subtle);
     }
 };
 

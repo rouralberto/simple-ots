@@ -1,122 +1,134 @@
 <?php
 
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+declare(strict_types=1);
+
+header("Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net; font-src https://cdn.jsdelivr.net; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
 header("X-Content-Type-Options: nosniff");
 header("X-Frame-Options: DENY");
 header("Referrer-Policy: no-referrer");
 header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
+header("Cache-Control: no-store");
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start([
-        'cookie_httponly' => true,
-        'cookie_secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on',
-        'cookie_samesite' => 'Strict',
-        'use_strict_mode' => true,
-    ]);
+const RATE_LIMIT_WINDOW = 300; // 5 minutes
+const RATE_LIMIT_MAX_ATTEMPTS = 30;
+const MAX_SECRET_LENGTH = 131072; // Base64 ciphertext, roughly 96KB of plaintext
+
+enum Expiry: int
+{
+    case Hour = 3600;
+    case Day  = 86400;
+    case Week = 604800;
 }
 
-$pdo = new PDO('sqlite:/var/www/db/db.sqlite');
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-$pdo->exec('
-    CREATE TABLE IF NOT EXISTS secrets (
-        uuid      TEXT PRIMARY KEY,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        expiry    INTEGER,
-        value     TEXT
-    ) STRICT
-');
+final class Secret
+{
+    public int $remainingSeconds {
+        get => $this->expiresAt - time();
+    }
 
-$pdo->exec('
-    CREATE TABLE IF NOT EXISTS rate_limits (
-        ip        TEXT PRIMARY KEY,
-        attempts  INTEGER DEFAULT 1,
-        window_start TEXT DEFAULT CURRENT_TIMESTAMP
-    ) STRICT
-');
+    public function __construct(
+        public readonly string $value,
+        public readonly int $expiresAt,
+    ) {
+    }
+}
+
+function db(): Pdo\Sqlite
+{
+    static $db = open_database();
+    return $db;
+}
+
+function open_database(): Pdo\Sqlite
+{
+    $db = new Pdo\Sqlite('sqlite:' . __DIR__ . '/../db/db.sqlite', options: [
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS secrets (
+            uuid      TEXT PRIMARY KEY,
+            createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+            expiry    INTEGER,
+            value     TEXT
+        ) STRICT
+    ');
+    $db->exec('
+        CREATE TABLE IF NOT EXISTS rate_limits (
+            ip        TEXT PRIMARY KEY,
+            attempts  INTEGER DEFAULT 1,
+            window_start TEXT DEFAULT CURRENT_TIMESTAMP
+        ) STRICT
+    ');
+    return $db;
+}
 
 cleanup_expired_secrets();
 
 function cleanup_expired_secrets(): void
 {
-    global $pdo;
-
-    $stmt = $pdo->prepare("
-        DELETE FROM secrets
-        WHERE (strftime('%s', 'now') - strftime('%s', createdAt)) > expiry
-    ");
-    $stmt->execute();
-
-    $stmt = $pdo->prepare("
-        DELETE FROM rate_limits
-        WHERE (strftime('%s', 'now') - strftime('%s', window_start)) > 3600
-    ");
-    $stmt->execute();
+    db()->exec('DELETE FROM secrets WHERE unixepoch() >= unixepoch(createdAt) + expiry');
+    db()->exec('DELETE FROM rate_limits WHERE unixepoch() - unixepoch(window_start) > 3600');
 }
 
-const RATE_LIMIT_WINDOW = 300; // 5 minutes
-const RATE_LIMIT_MAX_ATTEMPTS = 30;
-
+/**
+ * Counts this request against the client's window in a single atomic upsert,
+ * so concurrent requests can't slip past the limit.
+ */
+#[\NoDiscard('a request over the rate limit must be rejected')]
 function check_rate_limit(): bool
 {
-    global $pdo;
+    $stmt = db()->prepare('
+        INSERT INTO rate_limits (ip) VALUES (:ip)
+        ON CONFLICT (ip) DO UPDATE SET
+            attempts     = IIF(unixepoch() - unixepoch(window_start) < :window, attempts + 1, 1),
+            window_start = IIF(unixepoch() - unixepoch(window_start) < :window, window_start, CURRENT_TIMESTAMP)
+        RETURNING attempts
+    ');
+    $stmt->bindValue('ip', get_remote_ip());
+    // Bound explicitly as an integer: SQLite compares any number as less than a TEXT value.
+    $stmt->bindValue('window', RATE_LIMIT_WINDOW, PDO::PARAM_INT);
+    $stmt->execute();
 
-    $ip = get_remote_ip();
+    return $stmt->fetchColumn() <= RATE_LIMIT_MAX_ATTEMPTS;
+}
 
-    $stmt = $pdo->prepare('SELECT attempts, window_start FROM rate_limits WHERE ip = ?');
-    $stmt->execute([$ip]);
-    $record = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($record) {
-        $window_start = strtotime($record['window_start']);
-        $now = time();
-
-        if (($now - $window_start) < RATE_LIMIT_WINDOW) {
-            if ($record['attempts'] >= RATE_LIMIT_MAX_ATTEMPTS) {
-                return false;
-            }
-
-            $stmt = $pdo->prepare('UPDATE rate_limits SET attempts = attempts + 1 WHERE ip = ?');
-            $stmt->execute([$ip]);
-        } else {
-            $stmt = $pdo->prepare('UPDATE rate_limits SET attempts = 1, window_start = CURRENT_TIMESTAMP WHERE ip = ?');
-            $stmt->execute([$ip]);
-        }
-    } else {
-        $stmt = $pdo->prepare('INSERT INTO rate_limits (ip) VALUES (?)');
-        $stmt->execute([$ip]);
+function start_session(): void
+{
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start([
+            'cookie_httponly' => true,
+            'cookie_secure' => is_https(),
+            'cookie_samesite' => 'Strict',
+            'use_strict_mode' => true,
+        ]);
     }
-
-    return true;
 }
 
 function generate_csrf_token(): string
 {
-    if (empty($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['csrf_token'];
+    start_session();
+    return $_SESSION['csrf_token'] ??= bin2hex(random_bytes(32));
 }
 
-function validate_csrf_token(?string $token): bool
+#[\NoDiscard('a request with an invalid CSRF token must be rejected')]
+function validate_csrf_token(#[\SensitiveParameter] ?string $token): bool
 {
+    start_session();
     if (empty($_SESSION['csrf_token']) || empty($token)) {
         return false;
     }
     return hash_equals($_SESSION['csrf_token'], $token);
 }
 
-function regenerate_csrf_token(): void
+function regenerate_csrf_token(): string
 {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    start_session();
+    return $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-/**
- * @throws Exception
- */
 function uuidv4(): string
 {
     $data = random_bytes(16);
-    assert(strlen($data) == 16);
 
     $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
     $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
@@ -124,126 +136,191 @@ function uuidv4(): string
     return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
 }
 
-function is_valid_uuidv4(string $uuid): bool
+function is_valid_uuidv4(mixed $uuid): bool
 {
-    return preg_match('/^[a-f\d]{8}(-[a-f\d]{4}){4}[a-f\d]{8}$/i', $uuid) === 1;
+    return is_string($uuid) && preg_match('/^[a-f\d]{8}(-[a-f\d]{4}){4}[a-f\d]{8}$/i', $uuid) === 1;
 }
 
-function get_template(string $name): string
+/**
+ * Ciphertext must be Base64 holding at least a 12-byte IV and a 16-byte GCM tag.
+ * Rejecting anything else guarantees plaintext is never stored by mistake.
+ */
+function is_valid_ciphertext(mixed $value): bool
 {
-    return file_get_contents("/var/www/html/templates/$name.html");
-}
-
-function get_secret(string $uuid, bool $delete = false): mixed
-{
-    global $pdo;
-
-    try {
-        $pdo->exec('BEGIN IMMEDIATE');
-
-        $stmt = $pdo->prepare('SELECT value, createdAt, expiry FROM secrets WHERE uuid = ?');
-        $stmt->execute([$uuid]);
-        $secret = $stmt->fetch();
-
-        if ($secret) {
-            $createdAt = strtotime($secret['createdAt']);
-            $expiry    = $secret['expiry'];
-            $remaining = $createdAt + $expiry - date('U');
-            $valid     = $remaining > 0;
-
-            if ($delete || !$valid) {
-                $stmt = $pdo->prepare('DELETE FROM secrets WHERE uuid = ?');
-                $stmt->execute([$uuid]);
-            }
-
-            $pdo->exec('COMMIT');
-            return $valid ? $secret : false;
-        }
-
-        $pdo->exec('COMMIT');
+    if (!is_string($value) || strlen($value) > MAX_SECRET_LENGTH) {
         return false;
-    } catch (PDOException $e) {
-        $pdo->exec('ROLLBACK');
-        throw $e;
     }
+    $decoded = base64_decode($value, true);
+    return $decoded !== false && strlen($decoded) > 28;
 }
 
-function get_host(): string
+function get_template(string $name, array $vars = []): string
 {
-    $host = $_SERVER['HTTP_HOST'];
-    if (isset($_SERVER['HTTP_X_FORWARDED_HOST'])) {
-        $host = $_SERVER['HTTP_X_FORWARDED_HOST'];
-    } elseif (isset($_ENV['VIRTUAL_HOST'])) {
-        $host = $_ENV['VIRTUAL_HOST'];
-    }
+    $placeholders = array_map(fn(string $key) => '{{' . $key . '}}', array_keys($vars));
+    $values       = array_map(htmlspecialchars(...), $vars);
 
-    return $host;
+    return strtr(file_get_contents(__DIR__ . "/templates/$name.html"), array_combine($placeholders, $values));
 }
 
-function get_schema(): string
+function render_page(string $body, int $status = 200): never
 {
-    $isSecure = false;
-    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-        $isSecure = true;
-    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https' || !empty($_SERVER['HTTP_X_FORWARDED_SSL']) && $_SERVER['HTTP_X_FORWARDED_SSL'] === 'on') {
-        $isSecure = true;
-    }
-
-    return $isSecure ? 'https' : 'http';
-}
-
-function get_url(string $uri): string
-{
-    $host   = get_host();
-    $schema = get_schema();
-
-    return "$schema://$host/$uri";
-}
-
-function get_remaining_time($date, $expiry)
-{
-    $start_date   = strtotime($date);
-    $expiry_time  = $start_date + $expiry;
-    $current_time = time();
-    $timediff     = $expiry_time - $current_time;
-
-    $hours   = sprintf("%02d", floor($timediff / 3600));
-    $minutes = sprintf("%02d", floor(($timediff % 3600) / 60));
-
-    return $timediff > 0 ? "{$hours}h {$minutes}min" : false;
-}
-
-function get_remote_ip(): string
-{
-    $remote_ip = $_SERVER['REMOTE_ADDR'];
-    if (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-        $remote_ip = trim(explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0]);
-    }
-
-    return $remote_ip;
-}
-
-function is_allowed(): bool
-{
-    $is_allowed = true;
-
-    if (isset($_ENV['AUTH_IPS'])) {
-        $auth_ips   = explode(',', $_ENV['AUTH_IPS']);
-        $is_allowed = in_array(get_remote_ip(), $auth_ips);
-    }
-
-    return $is_allowed;
-}
-
-function show_rate_limit_error(): void
-{
-    http_response_code(429);
+    http_response_code($status);
     echo get_template('header');
-    echo '<h1>Too Many Requests</h1>';
-    echo '<div class="alert alert-danger" role="alert">';
-    echo 'You have made too many requests. Please wait a few minutes before trying again. ';
-    echo '<a href="/">Go back</a>.';
-    echo '</div>';
+    echo $body;
     echo get_template('footer');
     exit;
+}
+
+function render_error(int $status, string $title, string $message): never
+{
+    render_page(get_template('error', ['TITLE' => $title, 'MESSAGE' => $message]), $status);
+}
+
+function json_response(array $data, int $status = 200): never
+{
+    http_response_code($status);
+    header('Content-Type: application/json');
+    echo json_encode($data, JSON_THROW_ON_ERROR);
+    exit;
+}
+
+/**
+ * Look up a live secret without consuming it.
+ */
+function find_secret(string $uuid): ?Secret
+{
+    $stmt = db()->prepare('
+        SELECT value, unixepoch(createdAt) + expiry AS expiresAt
+        FROM secrets
+        WHERE uuid = ? AND unixepoch() < unixepoch(createdAt) + expiry
+    ');
+    $stmt->execute([$uuid]);
+    $row = $stmt->fetch();
+
+    return $row ? new Secret(...$row) : null;
+}
+
+/**
+ * Atomically read and delete a live secret: a single DELETE … RETURNING
+ * means two concurrent requests can never both receive it.
+ */
+#[\NoDiscard('the secret is deleted by this call, so its value must be used')]
+function take_secret(string $uuid): ?Secret
+{
+    $stmt = db()->prepare('
+        DELETE FROM secrets
+        WHERE uuid = ? AND unixepoch() < unixepoch(createdAt) + expiry
+        RETURNING value, unixepoch(createdAt) + expiry AS expiresAt
+    ');
+    $stmt->execute([$uuid]);
+    $row = array_first($stmt->fetchAll());
+
+    return $row ? new Secret(...$row) : null;
+}
+
+function format_duration(int $seconds): string
+{
+    $days    = intdiv($seconds, 86400);
+    $hours   = intdiv($seconds % 86400, 3600);
+    $minutes = intdiv($seconds % 3600, 60);
+
+    if ($days > 0) {
+        return $hours > 0 ? "{$days}d {$hours}h" : "{$days}d";
+    }
+    if ($hours > 0) {
+        return $minutes > 0 ? "{$hours}h {$minutes}min" : "{$hours}h";
+    }
+    return max(1, $minutes) . 'min';
+}
+
+function is_https(): bool
+{
+    return ($_SERVER['HTTPS'] ?? '') === 'on'
+        || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https'
+        || ($_SERVER['HTTP_X_FORWARDED_SSL'] ?? '') === 'on';
+}
+
+/**
+ * Read a comma-separated environment variable as a list of trimmed, non-empty values.
+ */
+function get_env_list(string $name): array
+{
+    return (string)getenv($name)
+        |> (fn(string $value) => explode(',', $value))
+        |> (fn(array $items) => array_map(trim(...), $items))
+        |> array_filter(...)
+        |> array_values(...);
+}
+
+/**
+ * Check whether an IP matches any entry in a list of IPs or CIDR ranges (IPv4 and IPv6).
+ */
+function ip_matches(string $ip, array $ranges): bool
+{
+    return filter_var($ip, FILTER_VALIDATE_IP) !== false
+        && array_any($ranges, fn(string $range) => ip_in_range(inet_pton($ip), $range));
+}
+
+function ip_in_range(string $ip_bin, string $range): bool
+{
+    [$subnet, $bits] = array_pad(explode('/', $range, 2), 2, null);
+    if (filter_var($subnet, FILTER_VALIDATE_IP) === false) {
+        return false;
+    }
+
+    $subnet_bin = inet_pton($subnet);
+    if (strlen($subnet_bin) !== strlen($ip_bin)) {
+        return false;
+    }
+
+    $bits      = $bits === null ? strlen($ip_bin) * 8 : (int)$bits;
+    $bytes     = intdiv($bits, 8);
+    $remainder = $bits % 8;
+
+    if (substr($ip_bin, 0, $bytes) !== substr($subnet_bin, 0, $bytes)) {
+        return false;
+    }
+    if ($remainder === 0) {
+        return true;
+    }
+
+    $mask = 0xff << (8 - $remainder) & 0xff;
+    return (ord($ip_bin[$bytes]) & $mask) === (ord($subnet_bin[$bytes]) & $mask);
+}
+
+/**
+ * The client IP. X-Forwarded-For is only honoured when the request comes from a proxy listed
+ * in TRUSTED_PROXIES, otherwise anyone could spoof it to bypass AUTH_IPS and rate limiting.
+ * The proxy chain is walked from the nearest hop outwards: the first untrusted hop is the client.
+ */
+function get_remote_ip(): string
+{
+    $remote_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $trusted   = get_env_list('TRUSTED_PROXIES');
+
+    if (!$trusted || !ip_matches($remote_ip, $trusted) || empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return $remote_ip;
+    }
+
+    $chain = $_SERVER['HTTP_X_FORWARDED_FOR']
+        |> (fn(string $header) => explode(',', $header))
+        |> (fn(array $hops) => array_map(trim(...), $hops))
+        |> array_reverse(...)
+        |> (fn(array $hops) => [$remote_ip, ...$hops]);
+
+    $client = array_find_key($chain, fn(string $hop) => !ip_matches($hop, $trusted));
+    if ($client === null) {
+        return array_last($chain);
+    }
+
+    // A malformed hop can't be the client; fall back to the last proxy that vouched for it.
+    return filter_var($chain[$client], FILTER_VALIDATE_IP) !== false ? $chain[$client] : $chain[$client - 1];
+}
+
+#[\NoDiscard('a client that is not allowed must be rejected')]
+function is_allowed(): bool
+{
+    $auth_ips = get_env_list('AUTH_IPS');
+
+    return !$auth_ips || ip_matches(get_remote_ip(), $auth_ips);
 }

@@ -6,19 +6,19 @@ require_once '../common.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Allow: POST');
-    json_response(['error' => 'Method not allowed.'], 405);
+    json_response(['error' => t('api.method_not_allowed')], 405);
 }
 
 if (!is_allowed()) {
-    json_response(['error' => 'You are not authorised to create secrets.'], 403);
+    json_response(['error' => t('api.not_authorised')], 403);
 }
 
 if (!check_rate_limit()) {
-    json_response(['error' => 'Too many requests. Please wait a few minutes before trying again.'], 429);
+    json_response(['error' => t('api.rate_limit')], 429);
 }
 
 if (!validate_csrf_token($_SERVER['HTTP_X_CSRF_TOKEN'] ?? null)) {
-    json_response(['error' => 'Your session has expired. Reload the page and try again.'], 403);
+    json_response(['error' => t('api.session_expired')], 403);
 }
 
 $input  = json_decode(file_get_contents('php://input'), true);
@@ -26,11 +26,11 @@ $secret = $input['secret'] ?? null;
 $expiry = is_int($input['expiry'] ?? null) ? Expiry::tryFrom($input['expiry']) : null;
 
 if (!is_valid_ciphertext($secret)) {
-    json_response(['error' => 'The secret is missing, too large, or not encrypted.'], 400);
+    json_response(['error' => t('api.invalid_secret')], 400);
 }
 
 if (!$expiry) {
-    json_response(['error' => 'Invalid expiry value.'], 400);
+    json_response(['error' => t('api.invalid_expiry')], 400);
 }
 
 $uuid = uuidv4();

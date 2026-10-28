@@ -8,10 +8,12 @@ header("X-Frame-Options: DENY");
 header("Referrer-Policy: no-referrer");
 header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
 header("Cache-Control: no-store");
+header("Vary: Accept-Language");
 
 const RATE_LIMIT_WINDOW = 300; // 5 minutes
 const RATE_LIMIT_MAX_ATTEMPTS = 30;
 const MAX_SECRET_LENGTH = 131072; // Base64 ciphertext, roughly 96KB of plaintext
+const LOCALES = ['en', 'es', 'zh']; // Each has a translation file in lang/; the first is the fallback
 
 enum Expiry: int
 {
@@ -154,18 +156,61 @@ function is_valid_ciphertext(mixed $value): bool
     return $decoded !== false && strlen($decoded) > 28;
 }
 
+/**
+ * Pick the supported language the browser prefers most, from its Accept-Language header
+ * (e.g. "es-ES,es;q=0.9,en;q=0.8"). Regional variants match their base language.
+ */
+function detect_locale(): string
+{
+    $preferences = [];
+    foreach (explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '') as $entry) {
+        if (!preg_match('/^\s*([a-z]{2,3})(?:[-_][\w-]*)?\s*(?:;\s*q\s*=\s*([\d.]+))?/i', $entry, $match)) {
+            continue;
+        }
+        $locale  = strtolower($match[1]);
+        $quality = isset($match[2]) ? (float)$match[2] : 1.0;
+        if (in_array($locale, LOCALES, true) && $quality > 0) {
+            $preferences[$locale] = max($preferences[$locale] ?? 0, $quality);
+        }
+    }
+    // The sort is stable, so equally weighted languages keep the browser's order.
+    arsort($preferences);
+
+    return array_key_first($preferences) ?? LOCALES[0];
+}
+
+function translations(): array
+{
+    static $strings = require __DIR__ . '/lang/' . detect_locale() . '.php';
+    return $strings;
+}
+
+/**
+ * A UI string in the visitor's language, with its {{NAME}} placeholders filled in.
+ */
+function t(string $key, array $vars = []): string
+{
+    $placeholders = array_map(fn(string $name) => '{{' . $name . '}}', array_keys($vars));
+    return strtr(translations()[$key] ?? $key, array_combine($placeholders, $vars));
+}
+
 function get_template(string $name, array $vars = []): string
 {
     $placeholders = array_map(fn(string $key) => '{{' . $key . '}}', array_keys($vars));
     $values       = array_map(htmlspecialchars(...), $vars);
 
-    return strtr(file_get_contents(__DIR__ . "/templates/$name.html"), array_combine($placeholders, $values));
+    // Translations are trusted markup and may hold {{NAME}} placeholders themselves, so they go in first.
+    return file_get_contents(__DIR__ . "/templates/$name.html")
+        |> (fn(string $html) => preg_replace_callback('/\{\{t:([\w.]+)\}\}/', fn(array $match) => t($match[1]), $html))
+        |> (fn(string $html) => strtr($html, array_combine($placeholders, $values)));
 }
 
 function render_page(string $body, int $status = 200): never
 {
+    $js_strings = array_filter(translations(), fn(string $key) => str_starts_with($key, 'js.'), ARRAY_FILTER_USE_KEY);
+
     http_response_code($status);
-    echo get_template('header');
+    echo get_template('header', ['I18N' => json_encode($js_strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)]);
     echo $body;
     echo get_template('footer');
     exit;
@@ -224,13 +269,15 @@ function format_duration(int $seconds): string
     $hours   = intdiv($seconds % 86400, 3600);
     $minutes = intdiv($seconds % 3600, 60);
 
+    $vars    = ['D' => $days, 'H' => $hours, 'M' => max(1, $minutes)];
+
     if ($days > 0) {
-        return $hours > 0 ? "{$days}d {$hours}h" : "{$days}d";
+        return t($hours > 0 ? 'duration.days_hours' : 'duration.days', $vars);
     }
     if ($hours > 0) {
-        return $minutes > 0 ? "{$hours}h {$minutes}min" : "{$hours}h";
+        return t($minutes > 0 ? 'duration.hours_minutes' : 'duration.hours', $vars);
     }
-    return max(1, $minutes) . 'min';
+    return t('duration.minutes', $vars);
 }
 
 function is_https(): bool

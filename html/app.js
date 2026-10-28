@@ -7,9 +7,15 @@
 (function () {
     'use strict';
 
-    const INSECURE_CONTEXT_MESSAGE =
-        'Encryption is unavailable because this page is not served over HTTPS. ' +
-        'Browsers only provide the Web Crypto API on secure origins.';
+    // UI strings in the visitor's language, rendered by the server into <html data-i18n>.
+    const STRINGS = JSON.parse(document.documentElement.dataset.i18n || '{}');
+
+    function t(key, vars = {}) {
+        return Object.entries(vars).reduce(
+            (text, [name, value]) => text.replaceAll(`{{${name}}}`, value),
+            STRINGS[key] || key
+        );
+    }
 
     function showError(element, message) {
         element.textContent = message;
@@ -30,7 +36,7 @@
             // Non-JSON error page (e.g. proxy failure); fall through with a generic message.
         }
         if (!response.ok) {
-            throw new Error(body.error || `Request failed (${response.status}). Please try again.`);
+            throw new Error(body.error || t('js.request_failed', { STATUS: response.status }));
         }
         return body;
     }
@@ -57,7 +63,7 @@
                     target.select();
                 }
 
-                label.textContent = copied ? 'Copied!' : 'Press Ctrl+C to copy';
+                label.textContent = t(copied ? 'js.copied' : 'js.copy_manually');
                 icon.className = copied ? 'bi bi-check-lg me-2' : 'bi bi-cursor-text me-2';
                 clearTimeout(resetTimer);
                 resetTimer = setTimeout(() => {
@@ -83,7 +89,7 @@
         let csrfToken = form.dataset.csrfToken;
 
         if (!OTSCrypto.isSupported()) {
-            showError(errorBox, INSECURE_CONTEXT_MESSAGE);
+            showError(errorBox, t('js.insecure_context'));
             submitBtn.disabled = true;
             return;
         }
@@ -101,7 +107,7 @@
             }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Encrypting…';
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' + t('js.encrypting');
 
             try {
                 const key = await OTSCrypto.generateKey();
@@ -127,7 +133,7 @@
                 sharingUrl.focus();
                 sharingUrl.select();
             } catch (err) {
-                showError(errorBox, err.message || 'Something went wrong. Please try again.');
+                showError(errorBox, err.message || t('js.generic_error'));
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = submitLabel;
@@ -157,7 +163,7 @@
         let revealing = false;
 
         if (!OTSCrypto.isSupported()) {
-            showError(errorBox, INSECURE_CONTEXT_MESSAGE + ' The secret has not been opened.');
+            showError(errorBox, t('js.insecure_context_reveal'));
             revealBtn.disabled = true;
             return;
         }
@@ -178,7 +184,7 @@
         revealBtn.addEventListener('click', async () => {
             revealing = true;
             revealBtn.disabled = true;
-            revealBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Decrypting…';
+            revealBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>' + t('js.decrypting');
 
             errorBox.hidden = true;
             let response;
@@ -195,7 +201,7 @@
             if (!response || !response.ok) {
                 const gone = response && response.status === 404;
                 const body = response ? await response.json().catch(() => ({})) : {};
-                showError(errorBox, body.error || 'Could not reach the server. The secret has not been opened; please try again.');
+                showError(errorBox, body.error || t('js.network_error'));
                 if (gone) {
                     intro.hidden = true;
                 } else {
@@ -215,9 +221,7 @@
                 const key = await OTSCrypto.importKey(keyString);
                 output.value = await OTSCrypto.decrypt((await response.json()).secret, key);
             } catch (err) {
-                showError(errorBox,
-                    'The secret could not be decrypted: the key in this link does not match. ' +
-                    'The secret has been deleted; ask the sender to create a new one.');
+                showError(errorBox, t('js.decrypt_failed'));
                 return;
             }
 

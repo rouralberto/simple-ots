@@ -5,7 +5,7 @@ declare(strict_types=1);
 require_once 'common.php';
 
 if (!check_rate_limit()) {
-    render_error(429, 'Too many requests', 'You have made too many requests. Please wait a few minutes before trying again.');
+    render_error(429, t('error.rate_limit.title'), t('error.rate_limit.message'));
 }
 
 // Legacy direct-view links: send them to the reveal page. Browsers keep the #key fragment across redirects.

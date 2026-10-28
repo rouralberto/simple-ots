@@ -12,6 +12,9 @@ RUN sed -i 's/^ServerTokens .*/ServerTokens Prod/; s/^ServerSignature .*/ServerS
       '<Directory /var/www/html/templates>' \
       '    Require all denied' \
       '</Directory>' \
+      '<Directory /var/www/html/lang>' \
+      '    Require all denied' \
+      '</Directory>' \
       > /etc/apache2/conf-available/simple-ots.conf \
  && a2enconf simple-ots \
  && echo 'expose_php = Off' > /usr/local/etc/php/conf.d/simple-ots.ini

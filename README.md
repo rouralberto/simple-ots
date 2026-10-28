@@ -10,6 +10,7 @@ A lightweight and secure "One Time Secret" solution for sharing sensitive inform
 - **One-Time Access**: Secrets are automatically deleted after being viewed
 - **Expiration Times**: Set secrets to expire after 1 hour, 1 day, or 1 week
 - **Simple Interface**: Clean, dark-themed Bootstrap UI
+- **Multilingual**: English, Spanish and Chinese, picked automatically from the browser's language
 - **Copy Functionality**: Easy copy buttons for both secret links and content
 - **Access Control**: Optional IP/CIDR allow-list for creating secrets
 - **Docker Ready**: Quick deployment with Docker and Docker Compose
@@ -126,6 +127,10 @@ By default the client IP is taken from the TCP connection and `X-Forwarded-For` 
 environment:
   TRUSTED_PROXIES: 172.17.0.0/16
 ```
+
+### Languages
+
+The interface language is chosen from the browser's `Accept-Language` header: English, Spanish or (Simplified) Chinese, falling back to English. Translations live in `html/lang/`; to add a language, copy `en.php` to `<code>.php`, translate it, and add the code to `LOCALES` in `html/common.php`.
 
 ### Persistent Storage
 

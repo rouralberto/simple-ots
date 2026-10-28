@@ -22,10 +22,11 @@ if (isset($_GET['read'])) {
         render_page(get_template('not-found'), 404);
     }
 
+    // Chat apps unfurl the link when it is sent; this GET can't consume the secret.
     render_page(get_template('read-secret', [
         'UUID'      => $uuid,
         'REMAINING' => format_duration($secret->remainingSeconds),
-    ]));
+    ]), title: t('reveal.title'), preview: 'secret');
 }
 
 if (!is_allowed()) {

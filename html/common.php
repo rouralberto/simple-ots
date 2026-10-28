@@ -15,6 +15,18 @@ const RATE_LIMIT_MAX_ATTEMPTS = 30;
 const MAX_SECRET_LENGTH = 131072; // Base64 ciphertext, roughly 96KB of plaintext
 const LOCALES = ['en', 'es', 'zh', 'th']; // Each has a translation file in lang/; the first is the fallback
 
+// Link previews in chat apps and social media. Always English: preview crawlers don't send a language.
+const PREVIEWS = [
+    'site' => [
+        'title'       => 'Simple OTS — One-time secret sharing',
+        'description' => 'Share passwords and other secrets through a link that works only once. Encrypted in your browser: the server never sees the plaintext.',
+    ],
+    'secret' => [
+        'title'       => 'Someone shared a secret with you',
+        'description' => 'Open the link to reveal it. It can be viewed only once, then it is deleted for good.',
+    ],
+];
+
 enum Expiry: int
 {
     case Hour = 3600;
@@ -226,16 +238,33 @@ function asset_url(string $path): string
     return "/$path?v=" . hash_file('xxh3', __DIR__ . "/$path");
 }
 
-function render_page(string $body, int $status = 200): never
+/**
+ * Link previews (Open Graph) need absolute URLs.
+ */
+function absolute_url(string $path): string
+{
+    return (is_https() ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $path;
+}
+
+/**
+ * $preview picks the link preview shown by chat apps and social media, from PREVIEWS.
+ */
+function render_page(string $body, int $status = 200, string $title = 'Simple OTS', string $preview = 'site'): never
 {
     $js_strings = array_filter(translations(), fn(string $key) => str_starts_with($key, 'js.'), ARRAY_FILTER_USE_KEY);
 
     http_response_code($status);
     echo get_template('header', [
-        'LOCALE'    => locale(),
-        'I18N'      => json_encode($js_strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
-        'CRYPTO_JS' => asset_url('crypto.js'),
-        'APP_JS'    => asset_url('app.js'),
+        'TITLE'               => $title,
+        'PREVIEW_TITLE'       => PREVIEWS[$preview]['title'],
+        'PREVIEW_DESCRIPTION' => PREVIEWS[$preview]['description'],
+        'OG_IMAGE'            => absolute_url(asset_url('og-image.png')),
+        'FAVICON'             => asset_url('favicon.svg'),
+        'TOUCH_ICON'          => asset_url('apple-touch-icon.png'),
+        'LOCALE'              => locale(),
+        'I18N'                => json_encode($js_strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+        'CRYPTO_JS'           => asset_url('crypto.js'),
+        'APP_JS'              => asset_url('app.js'),
     ]);
     echo $body;
     echo get_template('footer');

@@ -217,14 +217,25 @@ function get_template(string $name, array $vars = []): string
         |> (fn(string $html) => strtr($html, array_combine($placeholders, $values)));
 }
 
+/**
+ * A static file's URL tagged with a hash of its contents, so browsers and CDNs that cache it
+ * for a long time still fetch the new version as soon as it is deployed.
+ */
+function asset_url(string $path): string
+{
+    return "/$path?v=" . hash_file('xxh3', __DIR__ . "/$path");
+}
+
 function render_page(string $body, int $status = 200): never
 {
     $js_strings = array_filter(translations(), fn(string $key) => str_starts_with($key, 'js.'), ARRAY_FILTER_USE_KEY);
 
     http_response_code($status);
     echo get_template('header', [
-        'LOCALE' => locale(),
-        'I18N'   => json_encode($js_strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+        'LOCALE'    => locale(),
+        'I18N'      => json_encode($js_strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+        'CRYPTO_JS' => asset_url('crypto.js'),
+        'APP_JS'    => asset_url('app.js'),
     ]);
     echo $body;
     echo get_template('footer');

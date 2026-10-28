@@ -8,20 +8,23 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css" integrity="sha384-CK2SzKma4jA5H/MXDUU7i1TqZlCFaD4T01vtyDFvPlD97JQyS+IsSh1nI2EFbpyk" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/js-confetti@0.13.1/dist/js-confetti.browser.js" integrity="sha384-HjGVVWzPEDyUTwFJWnSRo0iVQwCLYB49oBLXpizUSDwKTRZBXXCWPFdYmb3VWjM2" crossorigin="anonymous" defer></script>
-    <script src="/crypto.js" defer></script>
-    <script src="/app.js" defer></script>
+    <script src="{{CRYPTO_JS}}" defer></script>
+    <script src="{{APP_JS}}" defer></script>
 </head>
 <body>
 <nav class="navbar border-bottom mb-5">
     <div class="container">
         <a class="navbar-brand" href="/"><i class="bi bi-shield-lock me-2"></i>Simple OTS</a>
-        <div id="language-picker" class="d-flex align-items-center" hidden>
-            <i class="bi bi-translate text-body-secondary me-2" aria-hidden="true"></i>
-            <select id="language" class="form-select form-select-sm w-auto" aria-label="{{t:nav.language}}" data-current="{{LOCALE}}">
-                <option value="en">English</option>
-                <option value="es">Español</option>
-                <option value="zh">中文</option>
-            </select>
+        <!-- Not flex itself: Bootstrap's .d-flex would override the hidden attribute. Shown by app.js. -->
+        <div id="language-picker" hidden>
+            <div class="d-flex align-items-center">
+                <i class="bi bi-translate text-body-secondary me-2" aria-hidden="true"></i>
+                <select id="language" class="form-select form-select-sm w-auto" aria-label="{{t:nav.language}}" data-current="{{LOCALE}}">
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                    <option value="zh">中文</option>
+                </select>
+            </div>
         </div>
     </div>
 </nav>

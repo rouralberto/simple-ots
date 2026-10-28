@@ -13,7 +13,7 @@ header("Vary: Accept-Language, Cookie");
 const RATE_LIMIT_WINDOW = 300; // 5 minutes
 const RATE_LIMIT_MAX_ATTEMPTS = 30;
 const MAX_SECRET_LENGTH = 131072; // Base64 ciphertext, roughly 96KB of plaintext
-const LOCALES = ['en', 'es', 'zh']; // Each has a translation file in lang/; the first is the fallback
+const LOCALES = ['en', 'es', 'zh', 'th']; // Each has a translation file in lang/; the first is the fallback
 
 enum Expiry: int
 {

@@ -7,6 +7,7 @@ declare(strict_types=1);
 return [
     'lang'   => 'en',
     'footer' => '— open-source, self-hosted, end-to-end encrypted.',
+    'nav.language' => 'Language',
 
     'duration.days_hours'    => '{{D}}d {{H}}h',
     'duration.days'          => '{{D}}d',

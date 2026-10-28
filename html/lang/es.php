@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
     'lang'   => 'es',
     'footer' => '— código abierto, autoalojado y cifrado de extremo a extremo.',
+    'nav.language' => 'Idioma',
 
     'duration.days_hours'    => '{{D}} d {{H}} h',
     'duration.days'          => '{{D}} d',

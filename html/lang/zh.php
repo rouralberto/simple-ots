@@ -6,6 +6,7 @@ declare(strict_types=1);
 return [
     'lang'   => 'zh-Hans',
     'footer' => '— 开源、可自托管、端到端加密。',
+    'nav.language' => '语言',
 
     'duration.days_hours'    => '{{D}}天{{H}}小时',
     'duration.days'          => '{{D}}天',

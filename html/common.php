@@ -8,7 +8,7 @@ header("X-Frame-Options: DENY");
 header("Referrer-Policy: no-referrer");
 header("Permissions-Policy: geolocation=(), microphone=(), camera=()");
 header("Cache-Control: no-store");
-header("Vary: Accept-Language");
+header("Vary: Accept-Language, Cookie");
 
 const RATE_LIMIT_WINDOW = 300; // 5 minutes
 const RATE_LIMIT_MAX_ATTEMPTS = 30;
@@ -156,12 +156,24 @@ function is_valid_ciphertext(mixed $value): bool
     return $decoded !== false && strlen($decoded) > 28;
 }
 
+function locale(): string
+{
+    static $locale = detect_locale();
+    return $locale;
+}
+
 /**
- * Pick the supported language the browser prefers most, from its Accept-Language header
- * (e.g. "es-ES,es;q=0.9,en;q=0.8"). Regional variants match their base language.
+ * The language picked in the navbar (the "lang" cookie), otherwise the supported language the
+ * browser prefers most, from its Accept-Language header (e.g. "es-ES,es;q=0.9,en;q=0.8").
+ * Regional variants match their base language.
  */
 function detect_locale(): string
 {
+    $chosen = $_COOKIE['lang'] ?? null;
+    if (in_array($chosen, LOCALES, true)) {
+        return $chosen;
+    }
+
     $preferences = [];
     foreach (explode(',', $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '') as $entry) {
         if (!preg_match('/^\s*([a-z]{2,3})(?:[-_][\w-]*)?\s*(?:;\s*q\s*=\s*([\d.]+))?/i', $entry, $match)) {
@@ -181,7 +193,7 @@ function detect_locale(): string
 
 function translations(): array
 {
-    static $strings = require __DIR__ . '/lang/' . detect_locale() . '.php';
+    static $strings = require __DIR__ . '/lang/' . locale() . '.php';
     return $strings;
 }
 
@@ -210,7 +222,10 @@ function render_page(string $body, int $status = 200): never
     $js_strings = array_filter(translations(), fn(string $key) => str_starts_with($key, 'js.'), ARRAY_FILTER_USE_KEY);
 
     http_response_code($status);
-    echo get_template('header', ['I18N' => json_encode($js_strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE)]);
+    echo get_template('header', [
+        'LOCALE' => locale(),
+        'I18N'   => json_encode($js_strings, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE),
+    ]);
     echo $body;
     echo get_template('footer');
     exit;

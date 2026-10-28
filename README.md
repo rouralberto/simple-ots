@@ -130,7 +130,7 @@ environment:
 
 ### Languages
 
-The interface language is chosen from the browser's `Accept-Language` header: English, Spanish or (Simplified) Chinese, falling back to English. Translations live in `html/lang/`; to add a language, copy `en.php` to `<code>.php`, translate it, and add the code to `LOCALES` in `html/common.php`.
+The interface language is chosen from the browser's `Accept-Language` header: English, Spanish or (Simplified) Chinese, falling back to English. Visitors can override it with the picker in the navbar, which remembers the choice in a `lang` cookie. Translations live in `html/lang/`; to add a language, copy `en.php` to `<code>.php`, translate it, and add the code to `LOCALES` in `html/common.php`.
 
 ### Persistent Storage
 

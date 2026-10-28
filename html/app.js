@@ -74,6 +74,27 @@
         });
     }
 
+    /**
+     * Language picker: the choice goes in a cookie the server reads, then the page reloads in that language.
+     * A reload (unlike following a link) keeps the #key fragment, so it is safe on a reveal link.
+     */
+    function initLanguagePicker() {
+        const select = document.getElementById('language');
+        select.value = select.dataset.current;
+        document.getElementById('language-picker').hidden = false;
+
+        select.addEventListener('change', () => {
+            const secure = window.location.protocol === 'https:' ? '; secure' : '';
+            document.cookie = `lang=${encodeURIComponent(select.value)}; path=/; max-age=31536000; samesite=lax${secure}`;
+            window.location.reload();
+        });
+    }
+
+    // Reloading would throw away a link or secret that can't be shown again, so switching waits until it's gone.
+    function lockLanguagePicker(locked) {
+        document.getElementById('language').disabled = locked;
+    }
+
     function initCreatePage() {
         const form = document.getElementById('secret-form');
         if (!form) return;
@@ -130,6 +151,7 @@
                 secretInput.value = '';
                 createSection.hidden = true;
                 createdSection.hidden = false;
+                lockLanguagePicker(true);
                 sharingUrl.focus();
                 sharingUrl.select();
             } catch (err) {
@@ -144,6 +166,7 @@
             sharingUrl.value = '';
             createdSection.hidden = true;
             createSection.hidden = false;
+            lockLanguagePicker(false);
             secretInput.focus();
         });
     }
@@ -226,6 +249,7 @@
             }
 
             result.hidden = false;
+            lockLanguagePicker(true);
             output.rows = Math.min(Math.max(output.value.split('\n').length, 4), 20);
             output.focus();
             output.select();
@@ -237,6 +261,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        initLanguagePicker();
         initCopyButtons();
         initCreatePage();
         initRevealPage();
